@@ -1,5 +1,7 @@
-import { Component, signal } from '@angular/core';
+
+import { Component, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { Api, HealthResponse } from './services/api';
 import { DocumentItem } from './document.model';
 import { DocumentValidationService } from './document-validation.service';
 
@@ -9,67 +11,83 @@ import { DocumentValidationService } from './document-validation.service';
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {
+export class App implements OnInit {
   protected readonly title = signal('Document Intelligence');
   protected readonly documents = signal<DocumentItem[]>([]);
   protected readonly errorMessage = signal('');
-  private readonly maxFileSize = 10 * 1024 * 1024;
+  protected readonly backendStatus = signal('Checking...');
+  protected readonly backendError = signal('');
 
   constructor(
-  private readonly documentValidation: DocumentValidationService,
-) {}
+    private readonly documentValidation: DocumentValidationService,
+    private readonly api: Api,
+  ) {}
 
-  private readonly allowedExtensions = new Set([
-  'pdf',
-  'txt',
-  'md',
-  'doc',
-  'docx',
-]);
+  ngOnInit(): void {
+    this.api.getHealth().subscribe({
+      next: (response: HealthResponse) => {
+        this.backendStatus.set(response.status);
+        this.backendError.set('');
+      },
+      error: () => {
+        this.backendStatus.set('Offline');
+        this.backendError.set(
+          'Unable to connect to the backend API.',
+        );
+      },
+    });
+  }
 
   protected onFilesSelected(event: Event): void {
-  const input = event.target as HTMLInputElement;
-  const files = Array.from(input.files ?? []);
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
 
-  this.errorMessage.set('');
+    this.errorMessage.set('');
 
-  const existingDocuments = this.documents();
-  const seenKeys = new Set(
-    existingDocuments.map(
-      (document) => `${document.name}:${document.size}:${document.type}`,
-    ),
-  );
+    const existingDocuments = this.documents();
+    const seenKeys = new Set(
+      existingDocuments.map(
+        (document) =>
+          `${document.name}:${document.size}:${document.type}`,
+      ),
+    );
 
-  const newDocuments: DocumentItem[] = [];
-  const errors: string[] = [];
+    const newDocuments: DocumentItem[] = [];
+    const errors: string[] = [];
 
-  for (const file of files) {
-    const validationError = this.documentValidation.validateFile(file);
+    for (const file of files) {
+      const validationError =
+        this.documentValidation.validateFile(file);
 
-    if (validationError) {
-      errors.push(validationError);
-      continue;
+      if (validationError) {
+        errors.push(validationError);
+        continue;
+      }
+
+      const key = `${file.name}:${file.size}:${file.type}`;
+
+      if (seenKeys.has(key)) {
+        errors.push(`${file.name}: duplicate file skipped.`);
+        continue;
+      }
+
+      seenKeys.add(key);
+      newDocuments.push(
+        this.documentValidation.createDocument(file),
+      );
     }
 
-    const key = `${file.name}:${file.size}:${file.type}`;
+    this.documents.update((current) => [
+      ...current,
+      ...newDocuments,
+    ]);
 
-    if (seenKeys.has(key)) {
-      errors.push(`${file.name}: duplicate file skipped.`);
-      continue;
+    if (errors.length > 0) {
+      this.errorMessage.set(errors.join(' '));
     }
 
-    seenKeys.add(key);
-    newDocuments.push(this.documentValidation.createDocument(file));
+    input.value = '';
   }
-
-  this.documents.update((current) => [...current, ...newDocuments]);
-
-  if (errors.length > 0) {
-    this.errorMessage.set(errors.join(' '));
-  }
-
-  input.value = '';
-}
 
   protected removeDocument(id: string): void {
     this.documents.update((current) =>

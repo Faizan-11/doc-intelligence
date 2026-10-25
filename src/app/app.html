@@ -1,3 +1,4 @@
+
 <div class="app-shell">
   <header class="topbar">
     <a class="brand" href="/" aria-label="DocuMind home">
@@ -22,6 +23,20 @@
         <span class="stat-label">Documents selected</span>
         <strong class="stat-number">{{ documents().length }}</strong>
         <p>Files in your current session</p>
+      </article>
+
+      <article class="stat-card" aria-live="polite">
+        <span class="stat-label">Backend API</span>
+        <strong class="stat-number">{{ backendStatus() }}</strong>
+        <p>
+          @if (backendStatus() === 'UP') {
+            Connected to DocuMind API
+          } @else if (backendStatus() === 'Checking...') {
+            Checking backend connection...
+          } @else {
+            {{ backendError() }}
+          }
+        </p>
       </article>
     </section>
 
