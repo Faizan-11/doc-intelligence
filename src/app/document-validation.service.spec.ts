@@ -73,4 +73,31 @@ describe('DocumentValidationService', () => {
     expect(document.file).toBe(file);
     expect(document.id).toBeTruthy();
   });
+
+  it('should reject a filename without an extension', () => {
+  const file = new File(['sample'], 'README', {
+    type: 'text/plain',
+  });
+
+  expect(service.validateFile(file))
+    .toContain('unsupported file type');
+});
+
+it('should reject a filename ending with a dot', () => {
+  const file = new File(['sample'], 'report.', {
+    type: 'application/pdf',
+  });
+
+  expect(service.validateFile(file))
+    .toContain('unsupported file type');
+});
+
+it('should reject an unsupported extension even if the MIME type claims PDF', () => {
+  const file = new File(['sample'], 'program.exe', {
+    type: 'application/pdf',
+  });
+
+  expect(service.validateFile(file))
+    .toContain('unsupported file type');
+});
 });
