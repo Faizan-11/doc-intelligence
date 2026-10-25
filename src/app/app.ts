@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DocumentItem } from './document.model';
+import { DocumentValidationService } from './document-validation.service';
 
 @Component({
   selector: 'app-root',
@@ -13,6 +14,10 @@ export class App {
   protected readonly documents = signal<DocumentItem[]>([]);
   protected readonly errorMessage = signal('');
   private readonly maxFileSize = 10 * 1024 * 1024;
+
+  constructor(
+  private readonly documentValidation: DocumentValidationService,
+) {}
 
   private readonly allowedExtensions = new Set([
   'pdf',
@@ -28,27 +33,21 @@ export class App {
 
   this.errorMessage.set('');
 
-  const currentDocuments = this.documents();
-  const existingKeys = new Set(
-    currentDocuments.map(
+  const existingDocuments = this.documents();
+  const seenKeys = new Set(
+    existingDocuments.map(
       (document) => `${document.name}:${document.size}:${document.type}`,
     ),
   );
 
   const newDocuments: DocumentItem[] = [];
   const errors: string[] = [];
-  const seenKeys = new Set(existingKeys);
 
   for (const file of files) {
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const validationError = this.documentValidation.validateFile(file);
 
-    if (!this.allowedExtensions.has(extension)) {
-      errors.push(`${file.name}: unsupported file type.`);
-      continue;
-    }
-
-    if (file.size > this.maxFileSize) {
-      errors.push(`${file.name}: exceeds the 10 MiB limit.`);
+    if (validationError) {
+      errors.push(validationError);
       continue;
     }
 
@@ -60,14 +59,7 @@ export class App {
     }
 
     seenKeys.add(key);
-
-    newDocuments.push({
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      type: file.type || 'Unknown file type',
-      file,
-    });
+    newDocuments.push(this.documentValidation.createDocument(file));
   }
 
   this.documents.update((current) => [...current, ...newDocuments]);
