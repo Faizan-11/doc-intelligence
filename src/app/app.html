@@ -89,14 +89,27 @@
                 </p>
               </div>
 
-              <button
-                type="button"
-                class="secondary-button"
-                (click)="removeDocument(document.id)"
-                [attr.aria-label]="'Remove ' + document.name"
-              >
-                Remove
-              </button>
+              
+<div class="document-actions">
+  <button
+    type="button"
+    class="secondary-button"
+    (click)="downloadDocument(document.id)"
+    [attr.aria-label]="'Download ' + document.name"
+  >
+    Download
+  </button>
+
+  <button
+    type="button"
+    class="secondary-button"
+    (click)="removeDocument(document.id)"
+    [attr.aria-label]="'Remove ' + document.name"
+  >
+    Remove
+  </button>
+</div>
+
             </article>
           }
         </div>

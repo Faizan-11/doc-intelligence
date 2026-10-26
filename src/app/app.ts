@@ -1,7 +1,11 @@
 
 import { Component, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { Api, HealthResponse } from './services/api';
+import {
+  Api,
+  BackendDocument,
+  HealthResponse,
+} from './services/api';
 import { DocumentItem } from './document.model';
 import { DocumentValidationService } from './document-validation.service';
 
@@ -28,6 +32,7 @@ export class App implements OnInit {
       next: (response: HealthResponse) => {
         this.backendStatus.set(response.status);
         this.backendError.set('');
+        this.loadDocuments();
       },
       error: () => {
         this.backendStatus.set('Offline');
@@ -38,61 +43,116 @@ export class App implements OnInit {
     });
   }
 
-  protected onFilesSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []);
-
-    this.errorMessage.set('');
-
-    const existingDocuments = this.documents();
-    const seenKeys = new Set(
-      existingDocuments.map(
-        (document) =>
-          `${document.name}:${document.size}:${document.type}`,
-      ),
-    );
-
-    const newDocuments: DocumentItem[] = [];
-    const errors: string[] = [];
-
-    for (const file of files) {
-      const validationError =
-        this.documentValidation.validateFile(file);
-
-      if (validationError) {
-        errors.push(validationError);
-        continue;
-      }
-
-      const key = `${file.name}:${file.size}:${file.type}`;
-
-      if (seenKeys.has(key)) {
-        errors.push(`${file.name}: duplicate file skipped.`);
-        continue;
-      }
-
-      seenKeys.add(key);
-      newDocuments.push(
-        this.documentValidation.createDocument(file),
-      );
-    }
-
-    this.documents.update((current) => [
-      ...current,
-      ...newDocuments,
-    ]);
-
-    if (errors.length > 0) {
-      this.errorMessage.set(errors.join(' '));
-    }
-
-    input.value = '';
+  private loadDocuments(): void {
+    this.api.getDocuments().subscribe({
+      next: (savedDocuments: BackendDocument[]) => {
+        this.documents.set(
+          savedDocuments.map((document) => ({
+            id: document.id,
+            name: document.fileName,
+            size: document.fileSize,
+            type: document.contentType ?? '',
+            file: new File([], document.fileName, {
+              type: document.contentType ?? '',
+            }),
+          })),
+        );
+      },
+      error: () => {
+        this.errorMessage.set(
+          'Unable to load saved documents from the backend.',
+        );
+      },
+    });
   }
 
+  
+protected onFilesSelected(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+
+  this.errorMessage.set('');
+
+  const existingDocuments = this.documents();
+  const seenKeys = new Set(
+    existingDocuments.map(
+      (document) =>
+        `${document.name}:${document.size}:${document.type}`,
+    ),
+  );
+
+  const errors: string[] = [];
+
+  for (const file of files) {
+    const validationError =
+      this.documentValidation.validateFile(file);
+
+    if (validationError) {
+      errors.push(validationError);
+      continue;
+    }
+
+    const key = `${file.name}:${file.size}:${file.type}`;
+
+    if (seenKeys.has(key)) {
+      errors.push(`${file.name}: duplicate file skipped.`);
+      continue;
+    }
+
+    seenKeys.add(key);
+
+    this.api.uploadDocument(file).subscribe({
+      next: (savedDocument) => {
+        const documentItem: DocumentItem = {
+          id: savedDocument.id,
+          name: savedDocument.fileName,
+          size: savedDocument.fileSize,
+          type: savedDocument.contentType ?? '',
+          file,
+        };
+
+        this.documents.update((current) => [
+          ...current,
+          documentItem,
+        ]);
+      },
+      error: () => {
+        errors.push(
+          `${file.name}: unable to upload the file to the backend.`,
+        );
+        this.errorMessage.set(errors.join(' '));
+      },
+    });
+  }
+
+  if (errors.length > 0) {
+    this.errorMessage.set(errors.join(' '));
+  }
+
+  input.value = '';
+}
+
+
+protected downloadDocument(id: string): void {
+  window.open(this.api.getDownloadUrl(id), '_blank');
+}
+
+
+
   protected removeDocument(id: string): void {
-    this.documents.update((current) =>
-      current.filter((document) => document.id !== id),
-    );
+    this.api.deleteDocument(id).subscribe({
+      next: () => {
+        this.documents.update((current) =>
+          current.filter((document) => document.id !== id),
+        );
+        this.errorMessage.set('');
+      },
+      error: () => {
+        this.errorMessage.set(
+          'Unable to delete the document from the backend.',
+        );
+      },
+    });
   }
 
   protected formatFileSize(bytes: number): string {
