@@ -5,7 +5,6 @@
       <span class="brand-icon">D</span>
       <span>DocuMind</span>
     </a>
-
     <span class="status">Development workspace</span>
   </header>
 
@@ -58,21 +57,65 @@
     </section>
 
     @if (errorMessage()) {
-      <p class="error-message" role="alert">{{ errorMessage() }}</p>
+      <p class="error-message" role="alert">
+        {{ errorMessage() }}
+      </p>
     }
 
     <section class="documents-section">
       <div class="section-heading">
-        <h2>Your documents</h2>
-        <span>{{ documents().length }} files</span>
+        <h2>{{ hasSearched() ? 'Search results' : 'Your documents' }}</h2>
+        <span>
+          {{ documents().length }}
+          {{ documents().length === 1 ? 'file' : 'files' }}
+        </span>
       </div>
+
+      <form
+        class="search-form"
+        (submit)="$event.preventDefault(); onSearch()"
+      >
+        <input
+          type="search"
+          name="search"
+          placeholder="Search inside your documents..."
+          aria-label="Search inside your documents"
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="isSearching()"
+        >
+          {{ isSearching() ? 'Searching...' : 'Search' }}
+        </button>
+      </form>
 
       @if (documents().length === 0) {
         <div class="empty-state">
-          <h3>No documents yet</h3>
-          <p>
-            Select a PDF, text, Markdown, or Word document to get started.
-          </p>
+          @if (hasSearched()) {
+            <h3>No matching documents found</h3>
+            <p>
+              Try another keyword or clear your search
+              to see all documents.
+            </p>
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="searchQuery.set(''); onSearch()"
+            >
+              Clear search
+            </button>
+          } @else {
+            <h3>No documents yet</h3>
+            <p>
+              Select a PDF, text, Markdown, or Word document
+              to get started.
+            </p>
+          }
         </div>
       } @else {
         <div class="document-list">
@@ -89,27 +132,25 @@
                 </p>
               </div>
 
-              
-<div class="document-actions">
-  <button
-    type="button"
-    class="secondary-button"
-    (click)="downloadDocument(document.id)"
-    [attr.aria-label]="'Download ' + document.name"
-  >
-    Download
-  </button>
+              <div class="document-actions">
+                <button
+                  type="button"
+                  class="secondary-button"
+                  (click)="downloadDocument(document.id)"
+                  [attr.aria-label]="'Download ' + document.name"
+                >
+                  Download
+                </button>
 
-  <button
-    type="button"
-    class="secondary-button"
-    (click)="removeDocument(document.id)"
-    [attr.aria-label]="'Remove ' + document.name"
-  >
-    Remove
-  </button>
-</div>
-
+                <button
+                  type="button"
+                  class="secondary-button"
+                  (click)="removeDocument(document.id)"
+                  [attr.aria-label]="'Remove ' + document.name"
+                >
+                  Remove
+                </button>
+              </div>
             </article>
           }
         </div>
@@ -121,8 +162,8 @@
       <div>
         <h2>Document management</h2>
         <p>
-          Next, we'll connect the interface to a backend so documents can be
-          stored, processed, searched, and queried using AI.
+          Manage your documents, search their extracted content,
+          and prepare your knowledge base for AI-powered queries.
         </p>
       </div>
     </section>

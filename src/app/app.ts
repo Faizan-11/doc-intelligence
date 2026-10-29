@@ -18,6 +18,9 @@ import { DocumentValidationService } from './document-validation.service';
 export class App implements OnInit {
   protected readonly title = signal('Document Intelligence');
   protected readonly documents = signal<DocumentItem[]>([]);
+  protected readonly searchQuery = signal('');
+  protected readonly isSearching = signal(false);
+  protected readonly hasSearched = signal(false);
   protected readonly errorMessage = signal('');
   protected readonly backendStatus = signal('Checking...');
   protected readonly backendError = signal('');
@@ -44,6 +47,7 @@ export class App implements OnInit {
   }
 
   private loadDocuments(): void {
+    this.isSearching.set(false);
     this.api.getDocuments().subscribe({
       next: (savedDocuments: BackendDocument[]) => {
         this.documents.set(
@@ -65,6 +69,43 @@ export class App implements OnInit {
       },
     });
   }
+
+  protected onSearch(): void {
+  const keyword = this.searchQuery().trim();
+
+  if (!keyword) {
+  this.hasSearched.set(false);
+  this.loadDocuments();
+  return;
+}
+
+this.hasSearched.set(true);
+
+  this.isSearching.set(true);
+  this.errorMessage.set('');
+
+  this.api.searchDocuments(keyword).subscribe({
+    next: (results: BackendDocument[]) => {
+      this.documents.set(
+        results.map((document) => ({
+          id: document.id,
+          name: document.fileName,
+          size: document.fileSize,
+          type: document.contentType ?? '',
+          file: new File([], document.fileName, {
+            type: document.contentType ?? '',
+          }),
+        })),
+      );
+
+      this.isSearching.set(false);
+    },
+    error: () => {
+      this.errorMessage.set('Unable to search documents.');
+      this.isSearching.set(false);
+    },
+  });
+}
 
   
 protected onFilesSelected(event: Event): void {

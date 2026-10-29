@@ -15,6 +15,8 @@ export interface BackendDocument {
   contentType: string | null;
   storageFileName: string;
   uploadedAt: string;
+  extractedText?: string | null;
+
 }
 
 @Injectable({
@@ -33,6 +35,15 @@ export class Api {
       `${this.baseUrl}/documents`,
     );
   }
+
+  searchDocuments(keyword: string): Observable<BackendDocument[]> {
+  return this.http.get<BackendDocument[]>(
+    `${this.baseUrl}/documents/search`,
+    {
+      params: { keyword },
+    },
+  );
+}
 
   uploadDocument(file: File): Observable<BackendDocument> {
     const formData = new FormData();
