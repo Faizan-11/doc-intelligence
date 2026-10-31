@@ -1,0 +1,93 @@
+
+<div class="auth-page">
+  <section class="auth-card">
+    <a class="brand" routerLink="/register">
+      <span class="brand-icon">D</span>
+      <span>DocuMind</span>
+    </a>
+
+    <div class="auth-heading">
+      <p class="eyebrow">GET STARTED</p>
+      <h1>Create your account</h1>
+      <p>Build your personal document intelligence workspace.</p>
+    </div>
+
+    @if (errorMessage()) {
+      <p class="error-message" role="alert">
+        {{ errorMessage() }}
+      </p>
+    }
+
+    <form (submit)="$event.preventDefault(); onSubmit()">
+      <label for="name">Full name</label>
+      <input
+        id="name"
+        type="text"
+        name="name"
+        placeholder="Your name"
+        [ngModel]="name()"
+        (ngModelChange)="name.set($event)"
+        autocomplete="name"
+        maxlength="100"
+        required
+      />
+
+      <label for="email">Email address</label>
+      <input
+        id="email"
+        type="email"
+        name="email"
+        placeholder="you@example.com"
+        [ngModel]="email()"
+        (ngModelChange)="email.set($event)"
+        autocomplete="email"
+        required
+      />
+
+      <label for="password">Password</label>
+      <input
+        id="password"
+        type="password"
+        name="password"
+        placeholder="At least 8 characters"
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+        autocomplete="new-password"
+        minlength="8"
+        maxlength="72"
+        required
+      />
+
+      <label for="confirm-password">Confirm password</label>
+      <input
+        id="confirm-password"
+        type="password"
+        name="confirmPassword"
+        placeholder="Re-enter your password"
+        [ngModel]="confirmPassword()"
+        (ngModelChange)="confirmPassword.set($event)"
+        autocomplete="new-password"
+        required
+      />
+
+      <button
+        type="submit"
+        class="primary-button"
+        [disabled]="
+          isSubmitting() ||
+          !name().trim() ||
+          !email().trim() ||
+          !password() ||
+          !confirmPassword()
+        "
+      >
+        {{ isSubmitting() ? 'Creating account...' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="auth-footer">
+      Already have an account?
+      <a routerLink="/login">Sign in</a>
+    </p>
+  </section>
+</div>

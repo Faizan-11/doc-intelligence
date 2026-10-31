@@ -1,0 +1,60 @@
+
+<div class="auth-page">
+  <section class="auth-card">
+    <a class="brand" routerLink="/login">
+      <span class="brand-icon">D</span>
+      <span>DocuMind</span>
+    </a>
+
+    <div class="auth-heading">
+      <p class="eyebrow">WELCOME BACK</p>
+      <h1>Sign in to your workspace</h1>
+      <p>Access your documents and AI-powered insights.</p>
+    </div>
+
+    @if (errorMessage()) {
+      <p class="error-message" role="alert">
+        {{ errorMessage() }}
+      </p>
+    }
+
+    <form (submit)="$event.preventDefault(); onSubmit()">
+      <label for="email">Email address</label>
+      <input
+        id="email"
+        type="email"
+        name="email"
+        placeholder="you@example.com"
+        [ngModel]="email()"
+        (ngModelChange)="email.set($event)"
+        autocomplete="email"
+        required
+      />
+
+      <label for="password">Password</label>
+      <input
+        id="password"
+        type="password"
+        name="password"
+        placeholder="Enter your password"
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+        autocomplete="current-password"
+        required
+      />
+
+      <button
+        type="submit"
+        class="primary-button"
+        [disabled]="isSubmitting() || !email().trim() || !password()"
+      >
+        {{ isSubmitting() ? 'Signing in...' : 'Sign in' }}
+      </button>
+    </form>
+
+    <p class="auth-footer">
+      Don't have an account?
+      <a routerLink="/register">Create one</a>
+    </p>
+  </section>
+</div>

@@ -8,6 +8,12 @@ export interface HealthResponse {
   application: string;
 }
 
+export type IngestionStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED';
+
 export interface BackendDocument {
   id: string;
   fileName: string;
@@ -16,7 +22,13 @@ export interface BackendDocument {
   storageFileName: string;
   uploadedAt: string;
   extractedText?: string | null;
+  ingestionStatus: IngestionStatus;
+  ingestionError: string | null;
+}
 
+export interface QaResponse {
+  answer: string;
+  sources: string[];
 }
 
 @Injectable({
@@ -27,7 +39,9 @@ export class Api {
   private readonly baseUrl = 'http://localhost:8080/api';
 
   getHealth(): Observable<HealthResponse> {
-    return this.http.get<HealthResponse>(`${this.baseUrl}/health`);
+    return this.http.get<HealthResponse>(
+      `${this.baseUrl}/health`,
+    );
   }
 
   getDocuments(): Observable<BackendDocument[]> {
@@ -37,13 +51,13 @@ export class Api {
   }
 
   searchDocuments(keyword: string): Observable<BackendDocument[]> {
-  return this.http.get<BackendDocument[]>(
-    `${this.baseUrl}/documents/search`,
-    {
-      params: { keyword },
-    },
-  );
-}
+    return this.http.get<BackendDocument[]>(
+      `${this.baseUrl}/documents/search`,
+      {
+        params: { keyword },
+      },
+    );
+  }
 
   uploadDocument(file: File): Observable<BackendDocument> {
     const formData = new FormData();
@@ -55,13 +69,44 @@ export class Api {
     );
   }
 
+  retryDocumentIngestion(id: string): Observable<BackendDocument> {
+    return this.http.post<BackendDocument>(
+      `${this.baseUrl}/documents/${id}/retry`,
+      {},
+    );
+  }
+
   deleteDocument(id: string): Observable<void> {
     return this.http.delete<void>(
       `${this.baseUrl}/documents/${id}`,
     );
   }
 
-  getDownloadUrl(id: string): string {
-    return `${this.baseUrl}/documents/${id}/download`;
+  getDocumentText(id: string): Observable<string> {
+    return this.http.get(
+      `${this.baseUrl}/documents/${id}/text`,
+      { responseType: 'text' },
+    );
+  }
+
+  downloadDocument(id: string): Observable<Blob> {
+  return this.http.get(
+    `${this.baseUrl}/documents/${id}/download`,
+    { responseType: 'blob' },
+  );
+}
+
+  askDocumentQuestion(
+    documentId: string,
+    question: string,
+    topK: number = 5,
+  ): Observable<QaResponse> {
+    return this.http.post<QaResponse>(
+      `${this.baseUrl}/qa/documents/${documentId}/ask`,
+      {
+        question,
+        topK,
+      },
+    );
   }
 }

@@ -1,0 +1,362 @@
+
+<div class="app-shell">
+  <header class="topbar">
+  <a class="brand" routerLink="/dashboard" aria-label="DocuMind home">
+    <span class="brand-icon">D</span>
+    <span>DocuMind</span>
+  </a>
+
+  <div class="topbar-actions">
+    <span class="status">Development workspace</span>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="logout()"
+    >
+      Sign out
+    </button>
+  </div>
+</header>
+
+  <main class="dashboard">
+    <section class="welcome">
+      <p class="eyebrow">YOUR WORKSPACE</p>
+      <h1>{{ title() }}</h1>
+      <p class="subtitle">
+        A smarter workspace for understanding your documents.
+      </p>
+    </section>
+
+    <section class="stats" aria-label="Workspace statistics">
+      <article class="stat-card">
+        <span class="stat-label">Documents selected</span>
+        <strong class="stat-number">{{ documents().length }}</strong>
+        <p>Files in your current session</p>
+      </article>
+
+      <article class="stat-card" aria-live="polite">
+        <span class="stat-label">Backend API</span>
+        <strong class="stat-number">{{ backendStatus() }}</strong>
+        <p>
+          @if (backendStatus() === 'UP') {
+            Connected to DocuMind API
+          } @else if (backendStatus() === 'Checking...') {
+            Checking backend connection...
+          } @else {
+            {{ backendError() }}
+          }
+        </p>
+      </article>
+    </section>
+
+    <section class="action-card">
+      <div>
+        <h2>Build your knowledge base</h2>
+        <p>Select documents to add them to your workspace.</p>
+      </div>
+
+      <label class="primary-button upload-button">
+        + Select documents
+        <input
+          type="file"
+          multiple
+          accept=".pdf,.txt,.md,.doc,.docx"
+          (change)="onFilesSelected($event)"
+        />
+      </label>
+    </section>
+
+    @if (errorMessage()) {
+      <p class="error-message" role="alert">
+        {{ errorMessage() }}
+      </p>
+    }
+
+    <section class="documents-section">
+      <div class="section-heading">
+        <h2>{{ hasSearched() ? 'Search results' : 'Your documents' }}</h2>
+        <span>
+          {{ documents().length }}
+          {{ documents().length === 1 ? 'file' : 'files' }}
+        </span>
+      </div>
+
+      <form
+        class="search-form"
+        (submit)="$event.preventDefault(); onSearch()"
+      >
+        <input
+          type="search"
+          name="search"
+          placeholder="Search inside your documents..."
+          aria-label="Search inside your documents"
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="isSearching()"
+        >
+          {{ isSearching() ? 'Searching...' : 'Search' }}
+        </button>
+      </form>
+
+      @if (documents().length === 0) {
+        <div class="empty-state">
+          @if (hasSearched()) {
+            <h3>No matching documents found</h3>
+            <p>
+              Try another keyword or clear your search
+              to see all documents.
+            </p>
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="searchQuery.set(''); onSearch()"
+            >
+              Clear search
+            </button>
+          } @else {
+            <h3>No documents yet</h3>
+            <p>
+              Select a PDF, text, Markdown, or Word document
+              to get started.
+            </p>
+          }
+        </div>
+      } @else {
+        <div class="document-list">
+          @for (document of documents(); track document.id) {
+            <article class="document-row">
+              <div class="file-icon" aria-hidden="true">DOC</div>
+
+              <div class="document-details">
+                <h3>{{ document.name }}</h3>
+                <p>
+                  {{ formatFileSize(document.size) }}
+                  ·
+                  {{ document.type }}
+                </p>
+
+                <div class="ingestion-status">
+                  @if (document.ingestionStatus === 'COMPLETED') {
+                    <span class="status-badge status-completed">
+                      Completed
+                    </span>
+                  } @else if (document.ingestionStatus === 'PROCESSING') {
+                    <span class="status-badge status-processing">
+                      Processing...
+                    </span>
+                  } @else if (document.ingestionStatus === 'FAILED') {
+                    <span class="status-badge status-failed">
+                      Failed
+                    </span>
+                  } @else {
+                    <span class="status-badge status-pending">
+                      Pending
+                    </span>
+                  }
+                </div>
+
+                @if (
+                  document.ingestionStatus === 'FAILED' &&
+                  document.ingestionError
+                ) {
+                  <p class="ingestion-error" role="alert">
+                    {{ document.ingestionError }}
+                  </p>
+                }
+              </div>
+
+              <div class="document-actions">
+                <button
+                  type="button"
+                  class="primary-button"
+                  (click)="openDocumentQa(document.id, document.name)"
+                  [disabled]="document.ingestionStatus !== 'COMPLETED'"
+                  [attr.title]="
+                    document.ingestionStatus !== 'COMPLETED'
+                      ? 'Complete document ingestion before asking questions'
+                      : 'Ask AI about this document'
+                  "
+                >
+                  Ask AI
+                </button>
+
+                @if (document.ingestionStatus === 'FAILED') {
+                  <button
+                    type="button"
+                    class="secondary-button retry-button"
+                    (click)="retryDocumentIngestion(document.id)"
+                    [disabled]="retryingDocumentIds().includes(document.id)"
+                  >
+                    {{
+                      retryingDocumentIds().includes(document.id)
+                        ? 'Retrying...'
+                        : 'Retry ingestion'
+                    }}
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="secondary-button"
+                  (click)="downloadDocument(document.id)"
+                  [attr.aria-label]="'Download ' + document.name"
+                >
+                  Download
+                </button>
+
+                <button
+                  type="button"
+                  class="secondary-button"
+                  (click)="removeDocument(document.id)"
+                  [attr.aria-label]="'Remove ' + document.name"
+                >
+                  Remove
+                </button>
+
+                <button
+                  type="button"
+                  class="secondary-button"
+                  (click)="viewDocument(document.id, document.name)"
+                >
+                  View text
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    @if (askingDocumentId()) {
+      <section class="qa-panel" aria-labelledby="qa-title">
+        <div class="qa-header">
+          <div>
+            <p class="eyebrow">DOCUMENT INTELLIGENCE</p>
+            <h2 id="qa-title">Ask your document</h2>
+            <p class="qa-document-name">
+              {{ selectedDocumentName() }}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="closeDocumentQa()"
+          >
+            Close
+          </button>
+        </div>
+
+        <form
+          class="qa-form"
+          (submit)="$event.preventDefault(); askQuestion()"
+        >
+          <label for="document-question">
+            What would you like to know?
+          </label>
+
+          <textarea
+            id="document-question"
+            name="question"
+            rows="3"
+            placeholder="Ask a question about this document..."
+            [value]="question()"
+            (input)="question.set($any($event.target).value)"
+            [disabled]="isAskingQuestion()"
+            required
+          ></textarea>
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="isAskingQuestion() || !question().trim()"
+          >
+            {{ isAskingQuestion() ? 'Generating answer...' : 'Ask question' }}
+          </button>
+        </form>
+
+        @if (isAskingQuestion()) {
+          <div class="qa-loading" aria-live="polite">
+            <span class="loading-indicator"></span>
+            <p>Reading your document and generating an answer...</p>
+          </div>
+        }
+
+        @if (qaError()) {
+          <p class="error-message" role="alert">
+            {{ qaError() }}
+          </p>
+        }
+
+        @if (qaAnswer()) {
+          <div class="qa-answer" aria-live="polite">
+            <h3>Answer</h3>
+            <p class="answer-content">{{ qaAnswer() }}</p>
+
+            @if (qaSources().length > 0) {
+              <div class="qa-sources">
+                <h4>Sources</h4>
+                <ul>
+                  @for (source of qaSources(); track source) {
+                    <li>{{ source }}</li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    <section class="next-step">
+      <span class="step-indicator">02</span>
+      <div>
+        <h2>Document management</h2>
+        <p>
+          Manage your documents, search their extracted content,
+          and prepare your knowledge base for AI-powered queries.
+        </p>
+      </div>
+    </section>
+
+    @if (viewingDocumentId()) {
+      <section class="text-viewer" aria-labelledby="text-viewer-title">
+        <div class="text-viewer-header">
+          <div>
+            <h2 id="text-viewer-title">Extracted text</h2>
+            <p>{{ selectedDocumentName() }}</p>
+          </div>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="closeDocumentViewer()"
+          >
+            Close
+          </button>
+        </div>
+
+        @if (isLoadingText()) {
+          <p>Loading extracted text...</p>
+        } @else if (viewerError()) {
+          <p class="error-message">{{ viewerError() }}</p>
+        } @else {
+          <pre class="document-text">{{ documentText() }}</pre>
+        }
+      </section>
+    }
+  </main>
+
+  <footer class="footer">
+    DocuMind · Built incrementally with Angular
+  </footer>
+</div>
+
+
