@@ -57,14 +57,14 @@ describe('AuthInterceptor', () => {
   it('should clear authentication and redirect to login when a protected request returns 401', () => {
     let receivedError: unknown;
 
-    http.get('http://localhost:8080/api/documents').subscribe({
+    http.get('/api/documents').subscribe({
       error: (error) => {
         receivedError = error;
       },
     });
 
     const request = httpTestingController.expectOne(
-      'http://localhost:8080/api/documents',
+      '/api/documents',
     );
 
     expect(request.request.headers.get('Authorization'))
@@ -84,7 +84,7 @@ describe('AuthInterceptor', () => {
     let receivedError: unknown;
 
     http.post(
-      'http://localhost:8080/api/auth/login',
+      '/api/auth/login',
       { email: 'test@example.com', password: 'wrong-password' },
     ).subscribe({
       error: (error) => {
@@ -93,7 +93,7 @@ describe('AuthInterceptor', () => {
     });
 
     const request = httpTestingController.expectOne(
-      'http://localhost:8080/api/auth/login',
+      '/api/auth/login',
     );
 
     request.flush(

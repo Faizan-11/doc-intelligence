@@ -16,7 +16,7 @@ describe('Dashboard', () => {
   let fixture: ComponentFixture<Dashboard>;
   let httpTestingController: HttpTestingController;
 
-  const apiUrl = 'http://localhost:8080/api';
+  const apiUrl = '/api';
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({

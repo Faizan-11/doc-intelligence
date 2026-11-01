@@ -36,7 +36,7 @@ export interface QaResponse {
 })
 export class Api {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080/api';
+  private readonly baseUrl = '/api';
 
   getHealth(): Observable<HealthResponse> {
     return this.http.get<HealthResponse>(
